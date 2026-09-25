@@ -48,18 +48,22 @@ export default {
           return json(null);
         }
 
-        const questions = await env.DB
-          .prepare(`
-            SELECT
-              id,
-              position,
-              a,
-              b,
-              correct_answer
-            FROM questions
-            WHERE quiz_id = ?
-            ORDER BY position ASC
-          `)
+       const questions = await env.DB
+  .prepare(`
+    SELECT
+      id,
+      position,
+      a,
+      b,
+      correct_answer,
+      type,
+      question_text,
+      options_json,
+      answer_index
+    FROM questions
+    WHERE quiz_id = ?
+    ORDER BY position ASC
+  `)
           .bind(quiz.id)
           .all();
 
