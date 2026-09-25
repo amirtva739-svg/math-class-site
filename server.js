@@ -87,8 +87,11 @@ app.get('/api/results', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 10000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on 0.0.0.0:${PORT}`);
 });
+
+server.keepAliveTimeout = 120000;
+server.headersTimeout = 120000;
