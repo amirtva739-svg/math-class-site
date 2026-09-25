@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>آزمون ریاضی</title>
+<title>چهارم رز - آزمون ریاضی</title>
 
 <style>
 
@@ -22,10 +22,6 @@ body{
   color:#263238;
   overflow-x:hidden;
 }
-
-/* =========================================
-   پس‌زمینه
-========================================= */
 
 .sky{
   position:fixed;
@@ -106,21 +102,11 @@ body{
   background:#62b957;
 }
 
-
-/* =========================================
-   کانتینر
-========================================= */
-
 .container{
   max-width:850px;
   margin:0 auto;
   padding:25px 16px 50px;
 }
-
-
-/* =========================================
-   کارت
-========================================= */
 
 .card{
   background:rgba(255,255,255,.96);
@@ -130,11 +116,6 @@ body{
     0 12px 35px rgba(40,70,100,.14);
   margin-bottom:20px;
 }
-
-
-/* =========================================
-   برند
-========================================= */
 
 .brand{
   text-align:center;
@@ -151,11 +132,6 @@ body{
   margin:7px 0 0;
   color:#687385;
 }
-
-
-/* =========================================
-   ورود نام
-========================================= */
 
 .name-box{
   text-align:center;
@@ -181,11 +157,6 @@ body{
   border-color:#6875e8;
 }
 
-
-/* =========================================
-   دکمه
-========================================= */
-
 button{
   border:0;
   border-radius:14px;
@@ -205,11 +176,6 @@ button{
 .start-btn:hover{
   transform:translateY(-1px);
 }
-
-
-/* =========================================
-   نوار وضعیت
-========================================= */
 
 .topbar{
   display:grid;
@@ -235,11 +201,6 @@ button{
 .stat b{
   font-size:19px;
 }
-
-
-/* =========================================
-   پیشرفت
-========================================= */
 
 .progress-wrap{
   margin-bottom:20px;
@@ -268,11 +229,6 @@ button{
   transition:.3s;
 }
 
-
-/* =========================================
-   سؤال
-========================================= */
-
 .question-card{
   background:white;
   border-radius:22px;
@@ -294,11 +250,6 @@ button{
   margin-bottom:25px;
 }
 
-
-/* =========================================
-   سؤال ضرب
-========================================= */
-
 .multiplication-box{
   font-size:48px;
   font-weight:bold;
@@ -307,11 +258,6 @@ button{
   margin-bottom:25px;
   color:#3444bb;
 }
-
-
-/* =========================================
-   گزینه‌ها
-========================================= */
 
 .options{
   display:grid;
@@ -351,11 +297,6 @@ button{
   background:#ffe9e9;
 }
 
-
-/* =========================================
-   دکمه بعدی
-========================================= */
-
 .next-wrap{
   text-align:center;
   margin-top:22px;
@@ -366,11 +307,6 @@ button{
   color:white;
   min-width:180px;
 }
-
-
-/* =========================================
-   نتیجه
-========================================= */
 
 .result{
   text-align:center;
@@ -401,11 +337,6 @@ button{
   margin-top:15px;
 }
 
-
-/* =========================================
-   اشتباه‌ها
-========================================= */
-
 .wrong-list{
   margin-top:20px;
   text-align:right;
@@ -420,11 +351,6 @@ button{
   line-height:1.9;
 }
 
-
-/* =========================================
-   پیام
-========================================= */
-
 .message{
   padding:14px;
   border-radius:12px;
@@ -434,19 +360,9 @@ button{
   text-align:center;
 }
 
-
-/* =========================================
-   مخفی
-========================================= */
-
 .hidden{
   display:none !important;
 }
-
-
-/* =========================================
-   موبایل
-========================================= */
 
 @media(max-width:650px){
 
@@ -476,9 +392,7 @@ button{
 
 </head>
 
-
 <body>
-
 
 <div class="sky">
 
@@ -498,14 +412,12 @@ button{
 <div class="container">
 
 
-  <!-- =========================================
-       برند
-  ========================================== -->
+  <!-- برند -->
 
   <div class="brand">
 
     <h1>
-      کاغذ رنگی
+      چهارم رز
     </h1>
 
     <p>
@@ -515,9 +427,7 @@ button{
   </div>
 
 
-  <!-- =========================================
-       ورود
-  ========================================== -->
+  <!-- ورود نام -->
 
   <div
     id="nameScreen"
@@ -553,17 +463,12 @@ button{
   </div>
 
 
-  <!-- =========================================
-       آزمون
-  ========================================== -->
+  <!-- آزمون -->
 
   <div
     id="quizScreen"
     class="hidden"
   >
-
-
-    <!-- وضعیت -->
 
     <div class="topbar">
 
@@ -649,9 +554,7 @@ button{
       </div>
 
 
-      <div
-        id="questionContent"
-      ></div>
+      <div id="questionContent"></div>
 
 
       <div
@@ -677,9 +580,7 @@ button{
   </div>
 
 
-  <!-- =========================================
-       نتیجه
-  ========================================== -->
+  <!-- نتیجه -->
 
   <div
     id="resultScreen"
@@ -720,10 +621,6 @@ button{
 
 
 <script>
-
-// =====================================================
-// متغیرها
-// =====================================================
 
 let quiz = null;
 
@@ -882,8 +779,6 @@ async function startQuiz(){
 
   answers = [];
 
-
-  // برای همه سؤال‌ها پاسخ خالی ایجاد می‌کنیم
 
   answers =
     questions.map(() => ({
@@ -1061,9 +956,7 @@ function renderQuestion(){
   options.innerHTML = "";
 
 
-  // =================================================
   // سؤال ضرب
-  // =================================================
 
   if(q.type === "multiplication"){
 
@@ -1094,9 +987,7 @@ function renderQuestion(){
   }
 
 
-  // =================================================
   // سؤال هندسه
-  // =================================================
 
   else if(q.type === "geometry"){
 
@@ -1117,10 +1008,6 @@ function renderQuestion(){
   }
 
 
-  // =================================================
-  // دکمه
-  // =================================================
-
   const nextBtn =
     document.getElementById(
       "nextBtn"
@@ -1140,8 +1027,6 @@ function renderQuestion(){
 
   }
 
-
-  // اگر قبلاً جواب داده شده
 
   if(
     answers[current] &&
@@ -1175,7 +1060,7 @@ function renderMultiplicationOptions(
 
 
   values.forEach(
-    (value,index) => {
+    value => {
 
       const div =
         document.createElement("div");
@@ -1205,7 +1090,7 @@ function renderMultiplicationOptions(
 
 
 // =====================================================
-// ساخت گزینه ضرب
+// ساخت گزینه‌های ضرب
 // =====================================================
 
 function generateMultiplicationOptions(
@@ -1278,7 +1163,7 @@ function renderGeometryOptions(
 
 
       div.textContent =
-        fa(text);
+        text;
 
 
       div.onclick =
@@ -1297,7 +1182,7 @@ function renderGeometryOptions(
 
 
 // =====================================================
-// انتخاب جواب
+// انتخاب پاسخ
 // =====================================================
 
 function selectAnswer(
@@ -1332,8 +1217,6 @@ function selectAnswer(
     false;
 
 
-  // ضرب
-
   if(q.type === "multiplication"){
 
     isCorrect =
@@ -1342,8 +1225,6 @@ function selectAnswer(
 
   }
 
-
-  // هندسه
 
   else if(q.type === "geometry"){
 
@@ -1384,7 +1265,7 @@ function selectAnswer(
 
 
 // =====================================================
-// نمایش جواب درست
+// نمایش پاسخ صحیح
 // =====================================================
 
 function showCorrectAnswer(){
@@ -1406,8 +1287,6 @@ function showCorrectAnswer(){
         -1;
 
 
-      // هندسه
-
       if(q.type === "geometry"){
 
         correctIndex =
@@ -1418,18 +1297,23 @@ function showCorrectAnswer(){
       }
 
 
-      // ضرب
-
       else{
 
-        const displayed =
-          Number(
-            element.textContent
-              .replace(/[۰-۹]/g,d =>
-                "۰۱۲۳۴۵۶۷۸۹"
-                  .indexOf(d)
-              )
+        const text =
+          element.textContent;
+
+
+        const normalized =
+          text.replace(
+            /[۰-۹]/g,
+            d =>
+              "۰۱۲۳۴۵۶۷۸۹"
+                .indexOf(d)
           );
+
+
+        const displayed =
+          Number(normalized);
 
 
         if(
@@ -1460,7 +1344,7 @@ function showCorrectAnswer(){
 
 
 // =====================================================
-// نمایش جواب انتخاب‌شده قبلی
+// نمایش انتخاب قبلی
 // =====================================================
 
 function showSelectedAnswer(){
@@ -1499,14 +1383,17 @@ function showSelectedAnswer(){
 
       else{
 
-        const displayed =
-          Number(
-            element.textContent
-              .replace(/[۰-۹]/g,d =>
-                "۰۱۲۳۴۵۶۷۸۹"
-                  .indexOf(d)
-              )
+        const normalized =
+          element.textContent.replace(
+            /[۰-۹]/g,
+            d =>
+              "۰۱۲۳۴۵۶۷۸۹"
+                .indexOf(d)
           );
+
+
+        const displayed =
+          Number(normalized);
 
 
         if(
@@ -1645,10 +1532,6 @@ async function finishQuiz(){
 
   renderWrongQuestions();
 
-
-  // =================================================
-  // ارسال به سرور
-  // =================================================
 
   try{
 
@@ -1886,7 +1769,7 @@ function renderWrongQuestions(){
 
 
 // =====================================================
-// شروع اولیه
+// Enter برای شروع
 // =====================================================
 
 document
