@@ -1,29 +1,1323 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>آزمون ریاضی | دانش‌آموز</title>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f7fb;color:#172033}.wrap{max-width:900px;margin:auto;padding:24px 16px 50px}.card{background:#fff;border:1px solid #e3e8f0;border-radius:18px;padding:24px;margin-bottom:18px;box-shadow:0 8px 25px rgba(24,39,75,.06)}h1,h2{margin-top:0}.muted{color:#687386;line-height:1.8}.field{max-width:500px}.field label{display:block;font-weight:700;margin-bottom:8px}input{width:100%;padding:13px 14px;border:1px solid #ccd4df;border-radius:10px;font-size:16px;outline:none}input:focus{border-color:#4c7cf0;box-shadow:0 0 0 3px rgba(76,124,240,.12)}button{border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;background:#2864e8;color:#fff}button.secondary{background:#e9eef7;color:#25334a}button:disabled{opacity:.55;cursor:not-allowed}.hidden{display:none!important}.status{padding:14px 16px;border-radius:12px;margin-top:16px;line-height:1.8;background:#eef4ff;border:1px solid #d8e5ff}.status.warning{background:#fff8e8;border-color:#f2dfaa}.status.success{background:#ecf9f0;border-color:#ccebd5}.status.error{background:#fff0f0;border-color:#f0caca}.quiz-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.timer{min-width:150px;text-align:center;background:#172033;color:#fff;border-radius:14px;padding:12px 18px}.timer small{display:block;opacity:.75;font-size:12px}.timer strong{display:block;font-size:25px;direction:ltr}.question{border:1px solid #e2e7ef;border-radius:15px;padding:18px;margin-bottom:14px;background:#fbfcfe}.question-number{color:#5f6d83;font-size:14px}.expression{font-size:27px;font-weight:800;direction:ltr;text-align:center;margin:10px 0 16px}.answer-input{max-width:240px;margin:auto;display:block;text-align:center;direction:ltr;font-size:20px}.result-score{text-align:center;font-size:46px;font-weight:900;margin:10px 0}.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}.result-box{background:#f5f7fb;border-radius:12px;padding:16px;text-align:center}.result-box strong{display:block;font-size:24px;margin-top:4px}.footer-note{text-align:center;color:#7a8494;font-size:13px;margin-top:18px}@media(max-width:600px){.card{padding:18px}.result-grid{grid-template-columns:1fr}.timer{width:100%}}
-</style></head>
-<body><div class="wrap">
-<section id="introCard" class="card"><h1>آزمون ریاضی</h1><p class="muted">نام و نام خانوادگی خود را وارد کنید و وضعیت آزمون را ببینید.</p>
-<div class="field"><label for="studentName">نام و نام خانوادگی</label><input id="studentName" maxlength="80" autocomplete="name" placeholder="مثلاً: علی رضایی"></div>
-<div id="quizStatus" class="status">در حال دریافت اطلاعات آزمون...</div>
-<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap"><button id="startButton" disabled>ورود به آزمون</button><button id="refreshButton" class="secondary">بررسی دوباره</button></div></section>
-<section id="quizCard" class="card hidden"><div class="quiz-header"><div><h2 id="quizTitle">آزمون</h2><div id="questionCount" class="muted"></div></div><div class="timer"><small>زمان باقی‌مانده</small><strong id="timer">--:--</strong></div></div>
-<form id="quizForm"><div id="questions"></div><button id="submitButton" type="submit">ثبت آزمون</button></form><p class="footer-note">بعد از ثبت آزمون، امکان تغییر پاسخ‌ها وجود ندارد.</p></section>
-<section id="resultCard" class="card hidden"><h2>آزمون ثبت شد</h2><p id="resultMessage" class="muted"></p><div class="result-score" id="scoreText">0 / 0</div><div class="result-grid"><div class="result-box">درست<strong id="correctText">0</strong></div><div class="result-box">غلط<strong id="wrongText">0</strong></div><div class="result-box">بدون پاسخ<strong id="blankText">0</strong></div></div></section>
-</div><script>
-const $=id=>document.getElementById(id);let quiz=null,timerInterval=null,hasSubmitted=false,quizStarted=false;
-function fa(n){return String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d])}function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
-function dateText(v){const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('fa-IR',{dateStyle:'medium',timeStyle:'short'}).format(d)}
-function startDate(){if(!quiz?.startTime)return null;const d=new Date(quiz.startTime);return Number.isNaN(d.getTime())?null:d}function duration(){const n=Number(quiz?.duration);return (Number.isFinite(n)&&n>0?n:20)*60000}
-function status(msg,type=''){$('quizStatus').className='status'+(type?' '+type:'');$('quizStatus').innerHTML=msg}
-async function loadQuiz(){ $('startButton').disabled=true;status('در حال دریافت اطلاعات آزمون...');try{const r=await fetch('/api/quiz',{cache:'no-store'});if(!r.ok)throw Error();quiz=await r.json();if(!quiz){status('در حال حاضر آزمونی منتشر نشده است.','warning');return}if(!Array.isArray(quiz.questions)||!quiz.questions.length){status('آزمون منتشر شده، اما هنوز سؤالی ندارد.','warning');return}updateStatus()}catch(e){console.error(e);status('دریافت اطلاعات آزمون انجام نشد. اتصال اینترنت و آدرس سایت را بررسی کنید.','error')}}
-function updateStatus(){if(!quiz)return;const s=startDate(),now=new Date();if(s&&now<s){status(`<strong>${esc(quiz.title||'آزمون ریاضی')}</strong><br>آزمون هنوز شروع نشده است.<br>زمان شروع: <strong>${esc(dateText(s))}</strong>`,'warning');$('startButton').disabled=true;$('startButton').textContent='هنوز شروع نشده';return}const end=s?new Date(s.getTime()+duration()):null;if(end&&now>=end){status('زمان این آزمون به پایان رسیده است.','error');$('startButton').disabled=true;$('startButton').textContent='آزمون تمام شده';return}status(`<strong>${esc(quiz.title||'آزمون ریاضی')}</strong><br>تعداد سؤال: ${fa(quiz.questions.length)}<br>مدت آزمون: ${fa(Number(quiz.duration)||20)} دقیقه`,'success');$('startButton').disabled=false;$('startButton').textContent='ورود به آزمون'}
-function startQuiz(){if(!quiz||quizStarted)return;const name=$('studentName').value.trim();if(!name){$('studentName').focus();status('لطفاً ابتدا نام و نام خانوادگی خود را وارد کنید.','error');return}const s=startDate(),now=new Date();if(s&&now<s){updateStatus();return}const end=s?new Date(s.getTime()+duration()):new Date(now.getTime()+duration());if(now>=end){updateStatus();return}quizStarted=true;$('introCard').classList.add('hidden');$('quizCard').classList.remove('hidden');$('quizTitle').textContent=quiz.title||'آزمون ریاضی';$('questionCount').textContent=`${fa(quiz.questions.length)} سؤال`;$('questions').innerHTML=quiz.questions.map((q,i)=>`<div class="question"><div class="question-number">سؤال ${fa(i+1)}</div><div class="expression">${esc(q.a)} × ${esc(q.b)} = ؟</div><input class="answer-input" type="number" inputmode="numeric" data-index="${i}" aria-label="پاسخ سؤال ${i+1}" autocomplete="off"></div>`).join('');quiz._endTime=end;updateTimer();timerInterval=setInterval(updateTimer,1000)}
-function updateTimer(){if(!quiz?._endTime||hasSubmitted)return;const rem=quiz._endTime-Date.now();if(rem<=0){$('timer').textContent='۰۰:۰۰';submitQuiz(true);return}const sec=Math.floor(rem/1000),m=Math.floor(sec/60),s=sec%60;$('timer').textContent=`${fa(String(m).padStart(2,'0'))}:${fa(String(s).padStart(2,'0'))}`}
-async function submitQuiz(auto=false){if(hasSubmitted||!quiz)return;hasSubmitted=true;clearInterval(timerInterval);$('submitButton').disabled=true;const inputs=[...document.querySelectorAll('.answer-input')];let correct=0,blank=0;const answers=quiz.questions.map((q,i)=>{const raw=inputs[i]?.value.trim()||'';const answer=raw===''?null:Number(raw);const ok=answer!==null&&answer===Number(q.answer);if(answer===null)blank++;if(ok)correct++;return{questionIndex:i,answer,correct:ok}});const total=quiz.questions.length,wrong=total-correct-blank;const payload={name:$('studentName').value.trim(),quizTitle:quiz.title||'آزمون ریاضی',answers,score:correct,correct,wrong,blank,total};try{const r=await fetch('/api/answers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw Error();$('quizCard').classList.add('hidden');$('resultCard').classList.remove('hidden');$('scoreText').textContent=`${fa(correct)} / ${fa(total)}`;$('correctText').textContent=fa(correct);$('wrongText').textContent=fa(wrong);$('blankText').textContent=fa(blank);$('resultMessage').textContent=auto?'زمان آزمون تمام شد و پاسخ‌ها به‌صورت خودکار ثبت شدند.':'پاسخ‌های شما با موفقیت برای معلم ارسال شد.'}catch(e){console.error(e);hasSubmitted=false;$('submitButton').disabled=false;alert('ثبت آزمون انجام نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.')}}
-$('startButton').onclick=startQuiz;$('refreshButton').onclick=loadQuiz;$('quizForm').onsubmit=e=>{e.preventDefault();if(confirm('آیا مطمئن هستید می‌خواهید آزمون را ثبت کنید؟ بعد از ثبت امکان تغییر پاسخ‌ها وجود ندارد.'))submitQuiz(false)};setInterval(()=>{if(quiz&&!quizStarted)updateStatus()},5000);loadQuiz();
-</script></body></html>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>بازی ضرب - کلاس ریاضی</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Vazirmatn", sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: #263238;
+      background:
+        linear-gradient(
+          180deg,
+          #80d8ff 0%,
+          #b9f0ff 45%,
+          #e8f8ff 100%
+        );
+    }
+
+    button,
+    input {
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+    }
+
+    .page {
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* آسمان */
+
+    .sun {
+      position: fixed;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: #ffd54f;
+      top: 45px;
+      left: 7%;
+      box-shadow:
+        0 0 30px rgba(255, 213, 79, .8),
+        0 0 70px rgba(255, 213, 79, .45);
+      animation: sunPulse 3s infinite alternate;
+      z-index: 0;
+    }
+
+    @keyframes sunPulse {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.07);
+      }
+    }
+
+    .cloud {
+      position: fixed;
+      background: rgba(255,255,255,.85);
+      width: 120px;
+      height: 40px;
+      border-radius: 40px;
+      z-index: 0;
+      animation: cloudMove 25s linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+
+    .cloud::before {
+      width: 55px;
+      height: 55px;
+      top: -25px;
+      left: 20px;
+    }
+
+    .cloud::after {
+      width: 70px;
+      height: 70px;
+      top: -35px;
+      right: 15px;
+    }
+
+    .cloud1 {
+      top: 100px;
+      right: -150px;
+    }
+
+    .cloud2 {
+      top: 230px;
+      right: -250px;
+      transform: scale(.75);
+      animation-duration: 35s;
+      animation-delay: -12s;
+    }
+
+    @keyframes cloudMove {
+      from {
+        right: -250px;
+      }
+      to {
+        right: 110%;
+      }
+    }
+
+    /* تپه */
+
+    .hill {
+      position: fixed;
+      bottom: -130px;
+      width: 650px;
+      height: 300px;
+      background: #65c466;
+      border-radius: 50% 50% 0 0;
+      z-index: 0;
+    }
+
+    .hill1 {
+      left: -170px;
+    }
+
+    .hill2 {
+      right: -180px;
+      bottom: -170px;
+      background: #4caf50;
+    }
+
+    /* محتوا */
+
+    .container {
+      width: min(940px, calc(100% - 30px));
+      margin: auto;
+      position: relative;
+      z-index: 5;
+      padding: 25px 0 50px;
+    }
+
+    /* لوگو */
+
+    .brand {
+      width: fit-content;
+      margin: 0 auto 20px;
+      background: white;
+      padding: 9px 20px;
+      border-radius: 999px;
+      font-weight: 900;
+      color: #ff7043;
+      box-shadow: 0 8px 25px rgba(0,0,0,.12);
+    }
+
+    /* کارت */
+
+    .card {
+      background: rgba(255,255,255,.95);
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow:
+        0 20px 60px rgba(0,0,0,.14);
+      backdrop-filter: blur(8px);
+    }
+
+    /* صفحه ورود */
+
+    #loginScreen {
+      max-width: 550px;
+      margin: 80px auto;
+    }
+
+    .game-title {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 900;
+      color: #ff7043;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #607d8b;
+      margin-bottom: 30px;
+    }
+
+    .input {
+      width: 100%;
+      border: 2px solid #e0e0e0;
+      border-radius: 16px;
+      padding: 15px 18px;
+      font-size: 17px;
+      outline: none;
+      transition: .2s;
+      margin-bottom: 15px;
+      text-align: right;
+    }
+
+    .input:focus {
+      border-color: #42a5f5;
+      box-shadow: 0 0 0 4px rgba(66,165,245,.12);
+    }
+
+    .main-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 17px;
+      background: #ff7043;
+      color: white;
+      font-size: 18px;
+      font-weight: 800;
+      box-shadow: 0 7px 0 #d84315;
+      transition: .15s;
+    }
+
+    .main-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .main-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 3px 0 #d84315;
+    }
+
+    /* وضعیت آزمون */
+
+    .status {
+      text-align: center;
+      padding: 15px;
+      border-radius: 15px;
+      background: #fff3e0;
+      color: #e65100;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* بازی */
+
+    #gameScreen {
+      display: none;
+    }
+
+    .game-header {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      background: #f7f9fb;
+      border-radius: 18px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-label {
+      color: #78909c;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 21px;
+      font-weight: 900;
+    }
+
+    .timer {
+      color: #ef5350;
+    }
+
+    .progress-wrap {
+      height: 12px;
+      background: #eceff1;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+
+    .progress {
+      height: 100%;
+      width: 0%;
+      background: #66bb6a;
+      transition: width .3s;
+    }
+
+    .question-number {
+      text-align: center;
+      color: #78909c;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .question {
+      text-align: center;
+      font-size: clamp(42px, 9vw, 72px);
+      font-weight: 900;
+      color: #263238;
+      margin: 15px 0 30px;
+      direction: ltr;
+    }
+
+    .answers {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .answer {
+      min-height: 85px;
+      background: white;
+      border: 3px solid #e0e0e0;
+      border-radius: 22px;
+      font-size: 28px;
+      font-weight: 900;
+      color: #37474f;
+      transition: .15s;
+      box-shadow: 0 5px 0 #d7dce0;
+    }
+
+    .answer:hover {
+      transform: translateY(-3px);
+      border-color: #42a5f5;
+    }
+
+    .answer.correct {
+      background: #c8e6c9;
+      border-color: #43a047;
+      color: #1b5e20;
+      animation: correctAnim .45s;
+    }
+
+    .answer.wrong {
+      background: #ffcdd2;
+      border-color: #e53935;
+      color: #b71c1c;
+      animation: shake .4s;
+    }
+
+    @keyframes correctAnim {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+
+    .message {
+      text-align: center;
+      min-height: 32px;
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .message.good {
+      color: #2e7d32;
+    }
+
+    .message.bad {
+      color: #c62828;
+    }
+
+    /* نتیجه */
+
+    #resultScreen {
+      display: none;
+      max-width: 650px;
+      margin: 50px auto;
+    }
+
+    .result-icon {
+      text-align: center;
+      font-size: 70px;
+      margin-bottom: 10px;
+    }
+
+    .result-title {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 900;
+      margin-bottom: 25px;
+    }
+
+    .result-score {
+      text-align: center;
+      font-size: 55px;
+      font-weight: 900;
+      color: #ff7043;
+      margin-bottom: 25px;
+    }
+
+    .result-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .result-box {
+      background: #f5f7f8;
+      padding: 18px;
+      border-radius: 18px;
+      text-align: center;
+    }
+
+    .result-box strong {
+      display: block;
+      font-size: 25px;
+      margin-bottom: 5px;
+    }
+
+    .wrong-list {
+      margin: 20px 0;
+    }
+
+    .wrong-item {
+      background: #fff3f3;
+      border: 1px solid #ffcdd2;
+      padding: 14px;
+      border-radius: 14px;
+      margin-bottom: 8px;
+    }
+
+    .home-btn {
+      margin-top: 15px;
+      background: #42a5f5;
+      box-shadow: 0 6px 0 #1976d2;
+    }
+
+    /* موبایل */
+
+    @media (max-width: 650px) {
+      .container {
+        width: calc(100% - 18px);
+        padding-top: 12px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
+      .game-title {
+        font-size: 28px;
+      }
+
+      .game-header {
+        gap: 7px;
+      }
+
+      .stat {
+        padding: 10px 5px;
+      }
+
+      .stat-value {
+        font-size: 17px;
+      }
+
+      .answers {
+        gap: 10px;
+      }
+
+      .answer {
+        min-height: 70px;
+        font-size: 23px;
+      }
+
+      .question {
+        font-size: 48px;
+      }
+
+      .result-stats {
+        gap: 7px;
+      }
+
+      .result-box {
+        padding: 12px 5px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <div class="sun"></div>
+  <div class="cloud cloud1"></div>
+  <div class="cloud cloud2"></div>
+  <div class="hill hill1"></div>
+  <div class="hill hill2"></div>
+
+  <div class="container">
+
+    <div class="brand">
+      کاغذ رنگی
+    </div>
+
+    <!-- ورود -->
+
+    <section id="loginScreen" class="card">
+
+      <div class="game-title">
+        بازی ضرب
+      </div>
+
+      <div class="subtitle" id="quizTitle">
+        آزمون ریاضی
+      </div>
+
+      <div id="loadingMessage" class="status">
+        در حال دریافت آزمون...
+      </div>
+
+      <div id="loginForm" class="hidden">
+
+        <input
+          id="studentName"
+          class="input"
+          type="text"
+          placeholder="نام و نام خانوادگی"
+          autocomplete="off"
+        >
+
+        <div id="quizStatus" class="status"></div>
+
+        <button
+          id="startBtn"
+          class="main-btn"
+        >
+          شروع بازی
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- بازی -->
+
+    <section id="gameScreen" class="card">
+
+      <div class="game-header">
+
+        <div class="stat">
+          <div class="stat-label">زمان</div>
+          <div class="stat-value timer" id="timer">00:00</div>
+        </div>
+
+        <div class="stat">
+          <div class="stat-label">درست</div>
+          <div class="stat-value" id="correctCount">0</div>
+        </div>
+
+        <div class="stat">
+          <div class="stat-label">سؤال</div>
+          <div class="stat-value">
+            <span id="questionNumber">1</span>
+            /
+            <span id="totalQuestions">10</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress" id="progress"></div>
+      </div>
+
+      <div class="question-number">
+        به جواب درست فکر کن!
+      </div>
+
+      <div class="question" id="question">
+        3 × 4
+      </div>
+
+      <div class="answers" id="answers"></div>
+
+      <div class="message" id="message"></div>
+
+    </section>
+
+
+    <!-- نتیجه -->
+
+    <section id="resultScreen" class="card">
+
+      <div class="result-icon" id="resultIcon">
+        🏆
+      </div>
+
+      <div class="result-title" id="resultTitle">
+        فوق‌العاده!
+      </div>
+
+      <div class="result-score">
+        <span id="finalPercentage">0</span>٪
+      </div>
+
+      <div class="result-stats">
+
+        <div class="result-box">
+          <strong id="finalCorrect">0</strong>
+          درست
+        </div>
+
+        <div class="result-box">
+          <strong id="finalWrong">0</strong>
+          غلط
+        </div>
+
+        <div class="result-box">
+          <strong id="finalTime">00:00</strong>
+          زمان
+        </div>
+
+      </div>
+
+      <div id="wrongList" class="wrong-list"></div>
+
+      <button
+        class="main-btn home-btn"
+        onclick="location.reload()"
+      >
+        دوباره بازی کن
+      </button>
+
+    </section>
+
+  </div>
+
+</div>
+
+
+<script>
+
+let quiz = null;
+let studentName = "";
+
+let questions = [];
+let currentQuestion = 0;
+
+let correctCount = 0;
+let wrongCount = 0;
+
+let selectedAnswers = [];
+let wrongQuestions = [];
+
+let startTime = null;
+let timerInterval = null;
+
+let submitting = false;
+
+
+/* -------------------------
+   دریافت آزمون
+------------------------- */
+
+async function loadQuiz() {
+
+  try {
+
+    const response = await fetch("/api/quiz");
+
+    if (!response.ok) {
+      throw new Error("خطا در دریافت آزمون");
+    }
+
+    quiz = await response.json();
+
+    document.getElementById("loadingMessage").classList.add("hidden");
+    document.getElementById("loginForm").classList.remove("hidden");
+
+    if (!quiz) {
+
+      document.getElementById("quizStatus").textContent =
+        "در حال حاضر آزمونی وجود ندارد.";
+
+      document.getElementById("startBtn").disabled = true;
+
+      return;
+    }
+
+    document.getElementById("quizTitle").textContent =
+      quiz.title || "آزمون ریاضی";
+
+    questions = Array.isArray(quiz.questions)
+      ? quiz.questions
+      : [];
+
+    document.getElementById("totalQuestions").textContent =
+      questions.length;
+
+    if (questions.length === 0) {
+
+      document.getElementById("quizStatus").textContent =
+        "این آزمون هنوز سؤالی ندارد.";
+
+      document.getElementById("startBtn").disabled = true;
+
+      return;
+    }
+
+    checkQuizTime();
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById("loadingMessage").textContent =
+      "دریافت آزمون با مشکل مواجه شد.";
+
+  }
+
+}
+
+
+/* -------------------------
+   وضعیت زمان آزمون
+------------------------- */
+
+function checkQuizTime() {
+
+  const status = document.getElementById("quizStatus");
+  const button = document.getElementById("startBtn");
+
+  if (!quiz.startAt) {
+
+    status.textContent = "آزمون آماده است. می‌توانی شروع کنی.";
+    button.disabled = false;
+
+    return;
+  }
+
+  const start = new Date(quiz.startAt);
+  const now = new Date();
+
+  if (now < start) {
+
+    status.textContent =
+      "آزمون هنوز شروع نشده است.";
+
+    button.disabled = true;
+
+    const timer = setInterval(() => {
+
+      const current = new Date();
+
+      if (current >= start) {
+
+        clearInterval(timer);
+
+        status.textContent =
+          "آزمون آماده است. می‌توانی شروع کنی.";
+
+        button.disabled = false;
+      }
+
+    }, 1000);
+
+    return;
+  }
+
+  status.textContent =
+    "آزمون آماده است. می‌توانی شروع کنی.";
+
+  button.disabled = false;
+
+}
+
+
+/* -------------------------
+   شروع بازی
+------------------------- */
+
+document.getElementById("startBtn").addEventListener("click", () => {
+
+  const input = document.getElementById("studentName");
+
+  studentName = input.value.trim();
+
+  if (!studentName) {
+
+    input.focus();
+
+    document.getElementById("quizStatus").textContent =
+      "لطفاً نامت را وارد کن.";
+
+    return;
+  }
+
+  if (!questions.length) {
+    return;
+  }
+
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("gameScreen").style.display = "block";
+
+  startTime = Date.now();
+
+  timerInterval = setInterval(updateTimer, 1000);
+
+  showQuestion();
+
+});
+
+
+/* -------------------------
+   تایمر
+------------------------- */
+
+function updateTimer() {
+
+  if (!startTime) return;
+
+  const seconds =
+    Math.floor((Date.now() - startTime) / 1000);
+
+  document.getElementById("timer").textContent =
+    formatTime(seconds);
+
+}
+
+
+function formatTime(totalSeconds) {
+
+  const minutes =
+    Math.floor(totalSeconds / 60);
+
+  const seconds =
+    totalSeconds % 60;
+
+  return (
+    String(minutes).padStart(2, "0")
+    + ":" +
+    String(seconds).padStart(2, "0")
+  );
+
+}
+
+
+/* -------------------------
+   نمایش سؤال
+------------------------- */
+
+function showQuestion() {
+
+  const question = questions[currentQuestion];
+
+  if (!question) {
+    finishGame();
+    return;
+  }
+
+  document.getElementById("questionNumber").textContent =
+    currentQuestion + 1;
+
+  document.getElementById("totalQuestions").textContent =
+    questions.length;
+
+  const progress =
+    (currentQuestion / questions.length) * 100;
+
+  document.getElementById("progress").style.width =
+    progress + "%";
+
+  document.getElementById("question").textContent =
+    `${question.a} × ${question.b}`;
+
+  document.getElementById("message").textContent = "";
+  document.getElementById("message").className = "message";
+
+  createAnswers(question);
+
+}
+
+
+/* -------------------------
+   ساخت گزینه‌ها
+------------------------- */
+
+function createAnswers(question) {
+
+  const container =
+    document.getElementById("answers");
+
+  container.innerHTML = "";
+
+  const correct =
+    Number(question.answer);
+
+  let options = [correct];
+
+  const candidates = new Set();
+
+  candidates.add(correct);
+
+  /* جواب‌های نزدیک */
+
+  const variations = [
+    correct + 1,
+    correct - 1,
+    correct + 2,
+    correct - 2,
+    correct + 3,
+    correct - 3,
+    correct + 10,
+    correct - 10
+  ];
+
+  for (const value of variations) {
+
+    if (
+      value > 0 &&
+      value !== correct
+    ) {
+      candidates.add(value);
+    }
+
+  }
+
+  /* اگر هنوز چهار گزینه نداریم */
+
+  let n = 1;
+
+  while (candidates.size < 4) {
+
+    candidates.add(correct + n);
+
+    candidates.add(correct - n);
+
+    n++;
+  }
+
+  options = [...candidates]
+    .filter(x => x > 0)
+    .slice(0, 4);
+
+  /* تصادفی کردن */
+
+  options.sort(() => Math.random() - .5);
+
+  options.forEach(value => {
+
+    const button =
+      document.createElement("button");
+
+    button.className = "answer";
+
+    button.textContent = value;
+
+    button.addEventListener(
+      "click",
+      () => chooseAnswer(button, value)
+    );
+
+    container.appendChild(button);
+
+  });
+
+}
+
+
+/* -------------------------
+   انتخاب جواب
+------------------------- */
+
+function chooseAnswer(button, value) {
+
+  const question = questions[currentQuestion];
+
+  const buttons =
+    document.querySelectorAll(".answer");
+
+  buttons.forEach(btn => {
+    btn.disabled = true;
+  });
+
+  const correct =
+    Number(question.answer);
+
+  if (Number(value) === correct) {
+
+    button.classList.add("correct");
+
+    correctCount++;
+
+    document.getElementById("correctCount").textContent =
+      correctCount;
+
+    selectedAnswers[currentQuestion] = {
+      questionIndex: currentQuestion,
+      answer: Number(value),
+      correct: true
+    };
+
+    document.getElementById("message").textContent =
+      "آفرین! جواب درست بود.";
+
+    document.getElementById("message").className =
+      "message good";
+
+    setTimeout(() => {
+
+      currentQuestion++;
+
+      if (currentQuestion >= questions.length) {
+        finishGame();
+      } else {
+        showQuestion();
+      }
+
+    }, 800);
+
+  } else {
+
+    button.classList.add("wrong");
+
+    wrongCount++;
+
+    if (!wrongQuestions.some(
+      item => item.index === currentQuestion
+    )) {
+
+      wrongQuestions.push({
+        index: currentQuestion,
+        a: question.a,
+        b: question.b,
+        chosen: Number(value),
+        correct: correct
+      });
+
+    }
+
+    selectedAnswers[currentQuestion] = {
+      questionIndex: currentQuestion,
+      answer: Number(value),
+      correct: false
+    };
+
+    document.getElementById("message").textContent =
+      "اشتباه بود! دوباره امتحان کن.";
+
+    document.getElementById("message").className =
+      "message bad";
+
+    /*
+      در جواب غلط دوباره گزینه‌ها فعال می‌شوند.
+      بنابراین دانش‌آموز می‌تواند همان سؤال را
+      تا پیدا کردن جواب درست ادامه دهد.
+    */
+
+    setTimeout(() => {
+
+      buttons.forEach(btn => {
+        btn.disabled = false;
+      });
+
+    }, 500);
+
+  }
+
+}
+
+
+/* -------------------------
+   پایان بازی
+------------------------- */
+
+async function finishGame() {
+
+  if (submitting) return;
+
+  submitting = true;
+
+  clearInterval(timerInterval);
+
+  const totalTime =
+    Math.floor((Date.now() - startTime) / 1000);
+
+  const total =
+    questions.length;
+
+  const percentage =
+    total > 0
+      ? Math.round((correctCount / total) * 100)
+      : 0;
+
+  document.getElementById("gameScreen").style.display =
+    "none";
+
+  document.getElementById("resultScreen").style.display =
+    "block";
+
+  document.getElementById("finalPercentage").textContent =
+    percentage;
+
+  document.getElementById("finalCorrect").textContent =
+    correctCount;
+
+  document.getElementById("finalWrong").textContent =
+    wrongQuestions.length;
+
+  document.getElementById("finalTime").textContent =
+    formatTime(totalTime);
+
+  let icon = "📚";
+  let title = "تمرین بیشتری لازمه";
+
+  if (percentage >= 90) {
+    icon = "🏆";
+    title = "فوق‌العاده!";
+  } else if (percentage >= 70) {
+    icon = "⭐";
+    title = "آفرین!";
+  } else if (percentage >= 50) {
+    icon = "💪";
+    title = "تلاش خوبی کردی!";
+  }
+
+  document.getElementById("resultIcon").textContent =
+    icon;
+
+  document.getElementById("resultTitle").textContent =
+    title;
+
+  showWrongQuestions();
+
+  await submitResult(
+    percentage,
+    totalTime
+  );
+
+}
+
+
+/* -------------------------
+   نمایش غلط‌ها
+------------------------- */
+
+function showWrongQuestions() {
+
+  const container =
+    document.getElementById("wrongList");
+
+  if (!wrongQuestions.length) {
+
+    container.innerHTML = `
+      <div class="status">
+        🎉 همه سؤال‌ها را درست جواب دادی!
+      </div>
+    `;
+
+    return;
+  }
+
+  container.innerHTML = `
+    <h3 style="margin-bottom:12px;">
+      سؤال‌هایی که اشتباه جواب دادی:
+    </h3>
+  `;
+
+  wrongQuestions.forEach(item => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "wrong-item";
+
+    div.innerHTML = `
+      <strong>
+        ${item.a} × ${item.b}
+      </strong>
+      <br>
+      جواب تو:
+      <span style="color:#c62828;font-weight:800;">
+        ${item.chosen}
+      </span>
+      <br>
+      جواب درست:
+      <span style="color:#2e7d32;font-weight:800;">
+        ${item.correct}
+      </span>
+    `;
+
+    container.appendChild(div);
+
+  });
+
+}
+
+
+/* -------------------------
+   ارسال نتیجه به سرور
+------------------------- */
+
+async function submitResult(
+  percentage,
+  totalTime
+) {
+
+  try {
+
+    const answers = questions.map(
+      (question, index) => {
+
+        const selected =
+          selectedAnswers[index];
+
+        return {
+          questionIndex: index,
+          answer:
+            selected
+              ? selected.answer
+              : null,
+          correct:
+            selected
+              ? selected.correct
+              : false
+        };
+
+      }
+    );
+
+    const response =
+      await fetch("/api/answers", {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+          name: studentName,
+
+          quizTitle:
+            quiz.title || "آزمون ریاضی",
+
+          answers,
+
+          score: correctCount,
+
+          correct: correctCount,
+
+          wrong: wrongQuestions.length,
+
+          blank: 0,
+
+          total: questions.length,
+
+          percentage,
+
+          time: totalTime
+
+        })
+
+      });
+
+    const data =
+      await response.json();
+
+    if (!response.ok || !data.ok) {
+
+      console.error(
+        "خطا در ثبت نتیجه:",
+        data
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "خطا در ارتباط با سرور:",
+      error
+    );
+
+  }
+
+}
+
+
+/* شروع */
+
+loadQuiz();
+
+</script>
+
+</body>
+</html>
