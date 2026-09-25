@@ -48,22 +48,22 @@ export default {
           return json(null);
         }
 
-       const questions = await env.DB
-  .prepare(`
-    SELECT
-      id,
-      position,
-      a,
-      b,
-      correct_answer,
-      type,
-      question_text,
-      options_json,
-      answer_index
-    FROM questions
-    WHERE quiz_id = ?
-    ORDER BY position ASC
-  `)
+        const questions = await env.DB
+          .prepare(`
+            SELECT
+              id,
+              position,
+              a,
+              b,
+              correct_answer,
+              type,
+              question_text,
+              options_json,
+              answer_index
+            FROM questions
+            WHERE quiz_id = ?
+            ORDER BY position ASC
+          `)
           .bind(quiz.id)
           .all();
 
@@ -80,9 +80,25 @@ export default {
 
           questions: questions.results.map(q => ({
             id: q.id,
+
+            // نوع سؤال
+            type: q.type || "multiplication",
+
+            // اطلاعات سؤال ضرب
             a: q.a,
             b: q.b,
-            answer: q.correct_answer
+            answer: q.correct_answer,
+
+            // اطلاعات سؤال هندسه
+            questionText: q.question_text || null,
+            options: q.options_json
+              ? JSON.parse(q.options_json)
+              : null,
+            answerIndex:
+              q.answer_index !== null &&
+              q.answer_index !== undefined
+                ? Number(q.answer_index)
+                : null
           }))
         });
       }
@@ -95,6 +111,7 @@ export default {
         const body = await request.json();
 
         const title = body.title || "آزمون ریاضی";
+
         const durationMinutes =
           Number(body.durationMinutes) > 0
             ? Number(body.durationMinutes)
@@ -106,8 +123,9 @@ export default {
           ? body.questions
           : [];
 
-        // نسخه قبلی server.js فقط یک آزمون نگه می‌داشت.
-        // بنابراین آزمون قبلی و پاسخ‌هایش را پاک می‌کنیم.
+        // =========================
+        // حذف آزمون قبلی
+        // =========================
 
         const oldQuizzes = await env.DB
           .prepare(`SELECT id FROM quizzes`)
@@ -154,7 +172,10 @@ export default {
           .prepare(`DELETE FROM quizzes`)
           .run();
 
+        // =========================
         // ساخت آزمون جدید
+        // =========================
+
         const createdAt = new Date().toISOString();
 
         const quizResult = await env.DB
@@ -173,25 +194,116 @@ export default {
 
         const quizId = quizResult.meta.last_row_id;
 
+        // =========================
         // ساخت سؤال‌ها
+        // =========================
+
         for (let i = 0; i < questions.length; i++) {
           const q = questions[i];
+
+          const type =
+            q.type === "geometry"
+              ? "geometry"
+              : "multiplication";
+
+          // -------------------------
+          // سؤال هندسه
+          // -------------------------
+
+          if (type === "geometry") {
+            const questionText =
+              String(q.questionText || "").trim();
+
+            const options =
+              Array.isArray(q.options)
+                ? q.options
+                : [];
+
+            const answerIndex =
+              q.answerIndex !== undefined &&
+              q.answerIndex !== null
+                ? Number(q.answerIndex)
+                : 0;
+
+            /*
+              a و b برای سؤال هندسه استفاده نمی‌شوند.
+              چون در جدول فعلی NOT NULL هستند،
+              مقدار 0 قرار می‌دهیم.
+            */
+
+            await env.DB
+              .prepare(`
+                INSERT INTO questions
+                  (
+                    quiz_id,
+                    position,
+                    a,
+                    b,
+                    correct_answer,
+                    type,
+                    question_text,
+                    options_json,
+                    answer_index
+                  )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `)
+              .bind(
+                quizId,
+                i,
+                0,
+                0,
+                answerIndex,
+                "geometry",
+                questionText,
+                JSON.stringify(options),
+                answerIndex
+              )
+              .run();
+
+            continue;
+          }
+
+          // -------------------------
+          // سؤال ضرب
+          // -------------------------
+
+          const a = Number(q.a);
+          const b = Number(q.b);
+          const answer = Number(q.answer);
 
           await env.DB
             .prepare(`
               INSERT INTO questions
-                (quiz_id, position, a, b, correct_answer)
-              VALUES (?, ?, ?, ?, ?)
+                (
+                  quiz_id,
+                  position,
+                  a,
+                  b,
+                  correct_answer,
+                  type,
+                  question_text,
+                  options_json,
+                  answer_index
+                )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `)
             .bind(
               quizId,
               i,
-              Number(q.a),
-              Number(q.b),
-              Number(q.answer)
+              a,
+              b,
+              answer,
+              "multiplication",
+              null,
+              null,
+              null
             )
             .run();
         }
+
+        // =========================
+        // پاسخ API
+        // =========================
 
         return json({
           title,
@@ -199,12 +311,31 @@ export default {
           durationMinutes,
           startTime: startAt,
           duration: durationMinutes,
-          questions: questions.map((q, i) => ({
-            id: i + 1,
-            a: Number(q.a),
-            b: Number(q.b),
-            answer: Number(q.answer)
-          }))
+
+          questions: questions.map((q, i) => {
+            if (q.type === "geometry") {
+              return {
+                id: i + 1,
+                type: "geometry",
+                questionText: q.questionText || "",
+                options: Array.isArray(q.options)
+                  ? q.options
+                  : [],
+                answerIndex:
+                  q.answerIndex !== undefined
+                    ? Number(q.answerIndex)
+                    : 0
+              };
+            }
+
+            return {
+              id: i + 1,
+              type: "multiplication",
+              a: Number(q.a),
+              b: Number(q.b),
+              answer: Number(q.answer)
+            };
+          })
         });
       }
 
@@ -212,7 +343,10 @@ export default {
       // POST /api/answers
       // =========================
 
-      if (url.pathname === "/api/answers" && request.method === "POST") {
+      if (
+        url.pathname === "/api/answers" &&
+        request.method === "POST"
+      ) {
         const body = await request.json();
 
         const quiz = await env.DB
@@ -226,7 +360,10 @@ export default {
 
         if (!quiz) {
           return json(
-            { ok: false, error: "آزمونی وجود ندارد." },
+            {
+              ok: false,
+              error: "آزمونی وجود ندارد."
+            },
             400
           );
         }
@@ -237,7 +374,12 @@ export default {
 
         const questions = await env.DB
           .prepare(`
-            SELECT id, position, correct_answer
+            SELECT
+              id,
+              position,
+              correct_answer,
+              type,
+              answer_index
             FROM questions
             WHERE quiz_id = ?
             ORDER BY position ASC
@@ -248,44 +390,80 @@ export default {
         let correct = 0;
         let blank = 0;
 
-        const checkedAnswers = questions.results.map((question, index) => {
-          const submitted = answers[index];
-          const rawAnswer =
-            submitted && submitted.answer !== null &&
-            submitted && submitted.answer !== undefined
-              ? submitted.answer
-              : null;
+        const checkedAnswers =
+          questions.results.map((question, index) => {
+            const submitted = answers[index];
 
-          const answer =
-            rawAnswer === null || rawAnswer === ""
-              ? null
-              : Number(rawAnswer);
+            const rawAnswer =
+              submitted &&
+              submitted.answer !== null &&
+              submitted.answer !== undefined
+                ? submitted.answer
+                : null;
 
-          if (answer === null) {
-            blank++;
-          }
+            const answer =
+              rawAnswer === null ||
+              rawAnswer === ""
+                ? null
+                : Number(rawAnswer);
 
-          const isCorrect =
-            answer !== null &&
-            answer === Number(question.correct_answer);
+            if (answer === null) {
+              blank++;
+            }
 
-          if (isCorrect) {
-            correct++;
-          }
+            let isCorrect = false;
 
-          return {
-            questionId: question.id,
-            answer,
-            isCorrect
-          };
-        });
+            // -------------------------
+            // بررسی سؤال هندسه
+            // -------------------------
+
+            if (question.type === "geometry") {
+              isCorrect =
+                answer !== null &&
+                answer === Number(
+                  question.answer_index
+                );
+            }
+
+            // -------------------------
+            // بررسی سؤال ضرب
+            // -------------------------
+
+            else {
+              isCorrect =
+                answer !== null &&
+                answer === Number(
+                  question.correct_answer
+                );
+            }
+
+            if (isCorrect) {
+              correct++;
+            }
+
+            return {
+              questionId: question.id,
+              answer,
+              isCorrect
+            };
+          });
 
         const total = questions.results.length;
-        const wrong = total - correct - blank;
-        const percentage =
-          total > 0 ? (correct / total) * 100 : 0;
 
-        const submittedAt = new Date().toISOString();
+        const wrong =
+          total - correct - blank;
+
+        const percentage =
+          total > 0
+            ? (correct / total) * 100
+            : 0;
+
+        const submittedAt =
+          new Date().toISOString();
+
+        // =========================
+        // ذخیره نتیجه
+        // =========================
 
         const submissionResult = await env.DB
           .prepare(`
@@ -310,7 +488,12 @@ export default {
           )
           .run();
 
-        const submissionId = submissionResult.meta.last_row_id;
+        const submissionId =
+          submissionResult.meta.last_row_id;
+
+        // =========================
+        // ذخیره پاسخ تک‌تک سؤال‌ها
+        // =========================
 
         for (const item of checkedAnswers) {
           await env.DB
@@ -333,6 +516,10 @@ export default {
             .run();
         }
 
+        // =========================
+        // نتیجه نهایی
+        // =========================
+
         return json({
           ok: true,
           score: correct,
@@ -348,7 +535,10 @@ export default {
       // GET /api/results
       // =========================
 
-      if (url.pathname === "/api/results" && request.method === "GET") {
+      if (
+        url.pathname === "/api/results" &&
+        request.method === "GET"
+      ) {
         const quiz = await env.DB
           .prepare(`
             SELECT
@@ -389,18 +579,23 @@ export default {
           quiz: {
             title: quiz.title,
             startAt: quiz.start_time,
-            durationMinutes: quiz.duration_minutes,
+            durationMinutes:
+              quiz.duration_minutes,
             startTime: quiz.start_time,
-            duration: quiz.duration_minutes
+            duration:
+              quiz.duration_minutes
           },
 
-          answers: submissions.results.map(row => ({
-            name: row.student_name,
-            score: row.score,
-            total: row.total,
-            percentage: row.percentage,
-            submittedAt: row.submitted_at
-          }))
+          answers:
+            submissions.results.map(row => ({
+              name: row.student_name,
+              score: row.score,
+              total: row.total,
+              percentage:
+                row.percentage,
+              submittedAt:
+                row.submitted_at
+            }))
         });
       }
 
@@ -433,7 +628,8 @@ function json(data, status = 200) {
     {
       status,
       headers: {
-        "content-type": "application/json; charset=UTF-8"
+        "content-type":
+          "application/json; charset=UTF-8"
       }
     }
   );
