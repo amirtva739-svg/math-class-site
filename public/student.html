@@ -1,29 +1,1911 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>آزمون ریاضی | دانش‌آموز</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>آزمون ریاضی</title>
+
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f7fb;color:#172033}.wrap{max-width:900px;margin:auto;padding:24px 16px 50px}.card{background:#fff;border:1px solid #e3e8f0;border-radius:18px;padding:24px;margin-bottom:18px;box-shadow:0 8px 25px rgba(24,39,75,.06)}h1,h2{margin-top:0}.muted{color:#687386;line-height:1.8}.field{max-width:500px}.field label{display:block;font-weight:700;margin-bottom:8px}input{width:100%;padding:13px 14px;border:1px solid #ccd4df;border-radius:10px;font-size:16px;outline:none}input:focus{border-color:#4c7cf0;box-shadow:0 0 0 3px rgba(76,124,240,.12)}button{border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;background:#2864e8;color:#fff}button.secondary{background:#e9eef7;color:#25334a}button:disabled{opacity:.55;cursor:not-allowed}.hidden{display:none!important}.status{padding:14px 16px;border-radius:12px;margin-top:16px;line-height:1.8;background:#eef4ff;border:1px solid #d8e5ff}.status.warning{background:#fff8e8;border-color:#f2dfaa}.status.success{background:#ecf9f0;border-color:#ccebd5}.status.error{background:#fff0f0;border-color:#f0caca}.quiz-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.timer{min-width:150px;text-align:center;background:#172033;color:#fff;border-radius:14px;padding:12px 18px}.timer small{display:block;opacity:.75;font-size:12px}.timer strong{display:block;font-size:25px;direction:ltr}.question{border:1px solid #e2e7ef;border-radius:15px;padding:18px;margin-bottom:14px;background:#fbfcfe}.question-number{color:#5f6d83;font-size:14px}.expression{font-size:27px;font-weight:800;direction:ltr;text-align:center;margin:10px 0 16px}.answer-input{max-width:240px;margin:auto;display:block;text-align:center;direction:ltr;font-size:20px}.result-score{text-align:center;font-size:46px;font-weight:900;margin:10px 0}.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}.result-box{background:#f5f7fb;border-radius:12px;padding:16px;text-align:center}.result-box strong{display:block;font-size:24px;margin-top:4px}.footer-note{text-align:center;color:#7a8494;font-size:13px;margin-top:18px}@media(max-width:600px){.card{padding:18px}.result-grid{grid-template-columns:1fr}.timer{width:100%}}
-</style></head>
-<body><div class="wrap">
-<section id="introCard" class="card"><h1>آزمون ریاضی</h1><p class="muted">نام و نام خانوادگی خود را وارد کنید و وضعیت آزمون را ببینید.</p>
-<div class="field"><label for="studentName">نام و نام خانوادگی</label><input id="studentName" maxlength="80" autocomplete="name" placeholder="مثلاً: علی رضایی"></div>
-<div id="quizStatus" class="status">در حال دریافت اطلاعات آزمون...</div>
-<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap"><button id="startButton" disabled>ورود به آزمون</button><button id="refreshButton" class="secondary">بررسی دوباره</button></div></section>
-<section id="quizCard" class="card hidden"><div class="quiz-header"><div><h2 id="quizTitle">آزمون</h2><div id="questionCount" class="muted"></div></div><div class="timer"><small>زمان باقی‌مانده</small><strong id="timer">--:--</strong></div></div>
-<form id="quizForm"><div id="questions"></div><button id="submitButton" type="submit">ثبت آزمون</button></form><p class="footer-note">بعد از ثبت آزمون، امکان تغییر پاسخ‌ها وجود ندارد.</p></section>
-<section id="resultCard" class="card hidden"><h2>آزمون ثبت شد</h2><p id="resultMessage" class="muted"></p><div class="result-score" id="scoreText">0 / 0</div><div class="result-grid"><div class="result-box">درست<strong id="correctText">0</strong></div><div class="result-box">غلط<strong id="wrongText">0</strong></div><div class="result-box">بدون پاسخ<strong id="blankText">0</strong></div></div></section>
-</div><script>
-const $=id=>document.getElementById(id);let quiz=null,timerInterval=null,hasSubmitted=false,quizStarted=false;
-function fa(n){return String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d])}function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
-function dateText(v){const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('fa-IR',{dateStyle:'medium',timeStyle:'short'}).format(d)}
-function startDate(){if(!quiz?.startTime)return null;const d=new Date(quiz.startTime);return Number.isNaN(d.getTime())?null:d}function duration(){const n=Number(quiz?.duration);return (Number.isFinite(n)&&n>0?n:20)*60000}
-function status(msg,type=''){$('quizStatus').className='status'+(type?' '+type:'');$('quizStatus').innerHTML=msg}
-async function loadQuiz(){ $('startButton').disabled=true;status('در حال دریافت اطلاعات آزمون...');try{const r=await fetch('/api/quiz',{cache:'no-store'});if(!r.ok)throw Error();quiz=await r.json();if(!quiz){status('در حال حاضر آزمونی منتشر نشده است.','warning');return}if(!Array.isArray(quiz.questions)||!quiz.questions.length){status('آزمون منتشر شده، اما هنوز سؤالی ندارد.','warning');return}updateStatus()}catch(e){console.error(e);status('دریافت اطلاعات آزمون انجام نشد. اتصال اینترنت و آدرس سایت را بررسی کنید.','error')}}
-function updateStatus(){if(!quiz)return;const s=startDate(),now=new Date();if(s&&now<s){status(`<strong>${esc(quiz.title||'آزمون ریاضی')}</strong><br>آزمون هنوز شروع نشده است.<br>زمان شروع: <strong>${esc(dateText(s))}</strong>`,'warning');$('startButton').disabled=true;$('startButton').textContent='هنوز شروع نشده';return}const end=s?new Date(s.getTime()+duration()):null;if(end&&now>=end){status('زمان این آزمون به پایان رسیده است.','error');$('startButton').disabled=true;$('startButton').textContent='آزمون تمام شده';return}status(`<strong>${esc(quiz.title||'آزمون ریاضی')}</strong><br>تعداد سؤال: ${fa(quiz.questions.length)}<br>مدت آزمون: ${fa(Number(quiz.duration)||20)} دقیقه`,'success');$('startButton').disabled=false;$('startButton').textContent='ورود به آزمون'}
-function startQuiz(){if(!quiz||quizStarted)return;const name=$('studentName').value.trim();if(!name){$('studentName').focus();status('لطفاً ابتدا نام و نام خانوادگی خود را وارد کنید.','error');return}const s=startDate(),now=new Date();if(s&&now<s){updateStatus();return}const end=s?new Date(s.getTime()+duration()):new Date(now.getTime()+duration());if(now>=end){updateStatus();return}quizStarted=true;$('introCard').classList.add('hidden');$('quizCard').classList.remove('hidden');$('quizTitle').textContent=quiz.title||'آزمون ریاضی';$('questionCount').textContent=`${fa(quiz.questions.length)} سؤال`;$('questions').innerHTML=quiz.questions.map((q,i)=>`<div class="question"><div class="question-number">سؤال ${fa(i+1)}</div><div class="expression">${esc(q.a)} × ${esc(q.b)} = ؟</div><input class="answer-input" type="number" inputmode="numeric" data-index="${i}" aria-label="پاسخ سؤال ${i+1}" autocomplete="off"></div>`).join('');quiz._endTime=end;updateTimer();timerInterval=setInterval(updateTimer,1000)}
-function updateTimer(){if(!quiz?._endTime||hasSubmitted)return;const rem=quiz._endTime-Date.now();if(rem<=0){$('timer').textContent='۰۰:۰۰';submitQuiz(true);return}const sec=Math.floor(rem/1000),m=Math.floor(sec/60),s=sec%60;$('timer').textContent=`${fa(String(m).padStart(2,'0'))}:${fa(String(s).padStart(2,'0'))}`}
-async function submitQuiz(auto=false){if(hasSubmitted||!quiz)return;hasSubmitted=true;clearInterval(timerInterval);$('submitButton').disabled=true;const inputs=[...document.querySelectorAll('.answer-input')];let correct=0,blank=0;const answers=quiz.questions.map((q,i)=>{const raw=inputs[i]?.value.trim()||'';const answer=raw===''?null:Number(raw);const ok=answer!==null&&answer===Number(q.answer);if(answer===null)blank++;if(ok)correct++;return{questionIndex:i,answer,correct:ok}});const total=quiz.questions.length,wrong=total-correct-blank;const payload={name:$('studentName').value.trim(),quizTitle:quiz.title||'آزمون ریاضی',answers,score:correct,correct,wrong,blank,total};try{const r=await fetch('/api/answers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw Error();$('quizCard').classList.add('hidden');$('resultCard').classList.remove('hidden');$('scoreText').textContent=`${fa(correct)} / ${fa(total)}`;$('correctText').textContent=fa(correct);$('wrongText').textContent=fa(wrong);$('blankText').textContent=fa(blank);$('resultMessage').textContent=auto?'زمان آزمون تمام شد و پاسخ‌ها به‌صورت خودکار ثبت شدند.':'پاسخ‌های شما با موفقیت برای معلم ارسال شد.'}catch(e){console.error(e);hasSubmitted=false;$('submitButton').disabled=false;alert('ثبت آزمون انجام نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.')}}
-$('startButton').onclick=startQuiz;$('refreshButton').onclick=loadQuiz;$('quizForm').onsubmit=e=>{e.preventDefault();if(confirm('آیا مطمئن هستید می‌خواهید آزمون را ثبت کنید؟ بعد از ثبت امکان تغییر پاسخ‌ها وجود ندارد.'))submitQuiz(false)};setInterval(()=>{if(quiz&&!quizStarted)updateStatus()},5000);loadQuiz();
-</script></body></html>
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  font-family:Tahoma,Arial,sans-serif;
+  background:
+    linear-gradient(#87ceeb 0%,#bfeaff 55%,#e7f8ff 100%);
+  min-height:100vh;
+  color:#263238;
+  overflow-x:hidden;
+}
+
+/* =========================================
+   پس‌زمینه
+========================================= */
+
+.sky{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-2;
+}
+
+.sun{
+  position:absolute;
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  background:#ffd54f;
+  top:45px;
+  left:8%;
+  box-shadow:0 0 35px rgba(255,213,79,.7);
+}
+
+.cloud{
+  position:absolute;
+  width:130px;
+  height:45px;
+  background:white;
+  border-radius:50px;
+  opacity:.9;
+}
+
+.cloud:before,
+.cloud:after{
+  content:"";
+  position:absolute;
+  background:white;
+  border-radius:50%;
+}
+
+.cloud:before{
+  width:55px;
+  height:55px;
+  top:-25px;
+  left:20px;
+}
+
+.cloud:after{
+  width:70px;
+  height:70px;
+  top:-35px;
+  right:15px;
+}
+
+.cloud1{
+  top:90px;
+  right:10%;
+}
+
+.cloud2{
+  top:190px;
+  left:12%;
+  transform:scale(.75);
+}
+
+.hill{
+  position:fixed;
+  bottom:-100px;
+  width:70%;
+  height:220px;
+  border-radius:50% 50% 0 0;
+  background:#74c365;
+  z-index:-1;
+}
+
+.hill1{
+  left:-20%;
+}
+
+.hill2{
+  right:-20%;
+  background:#62b957;
+}
+
+
+/* =========================================
+   کانتینر
+========================================= */
+
+.container{
+  max-width:850px;
+  margin:0 auto;
+  padding:25px 16px 50px;
+}
+
+
+/* =========================================
+   کارت
+========================================= */
+
+.card{
+  background:rgba(255,255,255,.96);
+  border-radius:25px;
+  padding:25px;
+  box-shadow:
+    0 12px 35px rgba(40,70,100,.14);
+  margin-bottom:20px;
+}
+
+
+/* =========================================
+   برند
+========================================= */
+
+.brand{
+  text-align:center;
+  margin-bottom:18px;
+}
+
+.brand h1{
+  margin:0;
+  font-size:30px;
+  color:#4054d8;
+}
+
+.brand p{
+  margin:7px 0 0;
+  color:#687385;
+}
+
+
+/* =========================================
+   ورود نام
+========================================= */
+
+.name-box{
+  text-align:center;
+}
+
+.name-box h2{
+  margin-top:0;
+}
+
+.name-box input{
+  width:100%;
+  max-width:450px;
+  padding:15px;
+  border:2px solid #dfe5ee;
+  border-radius:14px;
+  font-family:inherit;
+  font-size:17px;
+  text-align:center;
+  outline:none;
+}
+
+.name-box input:focus{
+  border-color:#6875e8;
+}
+
+
+/* =========================================
+   دکمه
+========================================= */
+
+button{
+  border:0;
+  border-radius:14px;
+  padding:14px 25px;
+  font-family:inherit;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.start-btn{
+  margin-top:15px;
+  background:#5665df;
+  color:white;
+  box-shadow:0 7px 15px rgba(86,101,223,.25);
+}
+
+.start-btn:hover{
+  transform:translateY(-1px);
+}
+
+
+/* =========================================
+   نوار وضعیت
+========================================= */
+
+.topbar{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-bottom:20px;
+}
+
+.stat{
+  background:white;
+  border-radius:16px;
+  padding:13px;
+  text-align:center;
+  box-shadow:0 5px 15px rgba(40,70,100,.08);
+}
+
+.stat small{
+  display:block;
+  color:#788394;
+  margin-bottom:5px;
+}
+
+.stat b{
+  font-size:19px;
+}
+
+
+/* =========================================
+   پیشرفت
+========================================= */
+
+.progress-wrap{
+  margin-bottom:20px;
+}
+
+.progress-info{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:7px;
+  font-size:14px;
+  color:#596476;
+}
+
+.progress{
+  height:10px;
+  background:#e8edf4;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+.progress-bar{
+  height:100%;
+  width:0;
+  background:#5e6be5;
+  border-radius:20px;
+  transition:.3s;
+}
+
+
+/* =========================================
+   سؤال
+========================================= */
+
+.question-card{
+  background:white;
+  border-radius:22px;
+  padding:25px;
+  box-shadow:0 8px 25px rgba(40,70,100,.1);
+}
+
+.question-number{
+  color:#6875e8;
+  font-weight:bold;
+  margin-bottom:15px;
+}
+
+.question-text{
+  font-size:23px;
+  font-weight:bold;
+  line-height:1.8;
+  text-align:center;
+  margin-bottom:25px;
+}
+
+
+/* =========================================
+   سؤال ضرب
+========================================= */
+
+.multiplication-box{
+  font-size:48px;
+  font-weight:bold;
+  text-align:center;
+  padding:20px;
+  margin-bottom:25px;
+  color:#3444bb;
+}
+
+
+/* =========================================
+   گزینه‌ها
+========================================= */
+
+.options{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:13px;
+}
+
+.option{
+  border:2px solid #e2e7ef;
+  background:#fafbfe;
+  padding:17px;
+  border-radius:15px;
+  cursor:pointer;
+  font-size:19px;
+  text-align:center;
+  transition:.15s;
+  user-select:none;
+}
+
+.option:hover{
+  border-color:#7783e9;
+  background:#f4f5ff;
+}
+
+.option.selected{
+  border-color:#5665df;
+  background:#e9ebff;
+}
+
+.option.correct{
+  border-color:#20a66a;
+  background:#e4f8ee;
+}
+
+.option.wrong{
+  border-color:#e65353;
+  background:#ffe9e9;
+}
+
+
+/* =========================================
+   دکمه بعدی
+========================================= */
+
+.next-wrap{
+  text-align:center;
+  margin-top:22px;
+}
+
+.next-btn{
+  background:#5665df;
+  color:white;
+  min-width:180px;
+}
+
+
+/* =========================================
+   نتیجه
+========================================= */
+
+.result{
+  text-align:center;
+}
+
+.result-icon{
+  font-size:65px;
+  margin-bottom:10px;
+}
+
+.result h2{
+  font-size:28px;
+  margin:10px 0;
+}
+
+.score{
+  font-size:42px;
+  font-weight:bold;
+  color:#5665df;
+  margin:15px 0;
+}
+
+.result-info{
+  background:#f5f7fb;
+  border-radius:15px;
+  padding:15px;
+  line-height:2;
+  margin-top:15px;
+}
+
+
+/* =========================================
+   اشتباه‌ها
+========================================= */
+
+.wrong-list{
+  margin-top:20px;
+  text-align:right;
+}
+
+.wrong-item{
+  background:#fff2f2;
+  border-right:5px solid #e65353;
+  padding:14px;
+  border-radius:10px;
+  margin-bottom:10px;
+  line-height:1.9;
+}
+
+
+/* =========================================
+   پیام
+========================================= */
+
+.message{
+  padding:14px;
+  border-radius:12px;
+  background:#fff3cd;
+  color:#735600;
+  margin-bottom:15px;
+  text-align:center;
+}
+
+
+/* =========================================
+   مخفی
+========================================= */
+
+.hidden{
+  display:none !important;
+}
+
+
+/* =========================================
+   موبایل
+========================================= */
+
+@media(max-width:650px){
+
+  .topbar{
+    grid-template-columns:1fr;
+  }
+
+  .options{
+    grid-template-columns:1fr;
+  }
+
+  .question-text{
+    font-size:20px;
+  }
+
+  .multiplication-box{
+    font-size:38px;
+  }
+
+  .card{
+    padding:18px;
+  }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="sky">
+
+  <div class="sun"></div>
+
+  <div class="cloud cloud1"></div>
+
+  <div class="cloud cloud2"></div>
+
+  <div class="hill hill1"></div>
+
+  <div class="hill hill2"></div>
+
+</div>
+
+
+<div class="container">
+
+
+  <!-- =========================================
+       برند
+  ========================================== -->
+
+  <div class="brand">
+
+    <h1>
+      کاغذ رنگی
+    </h1>
+
+    <p>
+      آزمون ریاضی پایه چهارم
+    </p>
+
+  </div>
+
+
+  <!-- =========================================
+       ورود
+  ========================================== -->
+
+  <div
+    id="nameScreen"
+    class="card name-box"
+  >
+
+    <h2>
+      آماده‌ای؟
+    </h2>
+
+    <p>
+      اول نامت را وارد کن تا آزمون شروع شود.
+    </p>
+
+
+    <input
+      id="studentName"
+      placeholder="نام و نام خانوادگی"
+      autocomplete="off"
+    >
+
+
+    <br>
+
+
+    <button
+      class="start-btn"
+      onclick="startQuiz()"
+    >
+      شروع آزمون
+    </button>
+
+  </div>
+
+
+  <!-- =========================================
+       آزمون
+  ========================================== -->
+
+  <div
+    id="quizScreen"
+    class="hidden"
+  >
+
+
+    <!-- وضعیت -->
+
+    <div class="topbar">
+
+      <div class="stat">
+
+        <small>
+          زمان
+        </small>
+
+        <b id="timer">
+          ۰۰:۰۰
+        </b>
+
+      </div>
+
+
+      <div class="stat">
+
+        <small>
+          پاسخ صحیح
+        </small>
+
+        <b id="correctCount">
+          ۰
+        </b>
+
+      </div>
+
+
+      <div class="stat">
+
+        <small>
+          سؤال
+        </small>
+
+        <b id="questionCounter">
+          ۱ / ۱
+        </b>
+
+      </div>
+
+    </div>
+
+
+    <!-- پیشرفت -->
+
+    <div class="progress-wrap">
+
+      <div class="progress-info">
+
+        <span>
+          پیشرفت آزمون
+        </span>
+
+        <span id="progressText">
+          ۰٪
+        </span>
+
+      </div>
+
+
+      <div class="progress">
+
+        <div
+          id="progressBar"
+          class="progress-bar"
+        ></div>
+
+      </div>
+
+    </div>
+
+
+    <!-- سؤال -->
+
+    <div class="question-card">
+
+      <div
+        id="questionNumber"
+        class="question-number"
+      >
+        سؤال ۱
+      </div>
+
+
+      <div
+        id="questionContent"
+      ></div>
+
+
+      <div
+        id="options"
+        class="options"
+      ></div>
+
+
+      <div class="next-wrap">
+
+        <button
+          id="nextBtn"
+          class="next-btn"
+          onclick="nextQuestion()"
+        >
+          سؤال بعدی
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================================
+       نتیجه
+  ========================================== -->
+
+  <div
+    id="resultScreen"
+    class="card result hidden"
+  >
+
+    <div class="result-icon">
+      🎉
+    </div>
+
+    <h2>
+      آزمون تمام شد
+    </h2>
+
+    <div
+      id="score"
+      class="score"
+    >
+      ۰ / ۰
+    </div>
+
+
+    <div
+      id="resultInfo"
+      class="result-info"
+    ></div>
+
+
+    <div
+      id="wrongList"
+      class="wrong-list"
+    ></div>
+
+  </div>
+
+
+</div>
+
+
+<script>
+
+// =====================================================
+// متغیرها
+// =====================================================
+
+let quiz = null;
+
+let questions = [];
+
+let answers = [];
+
+let current = 0;
+
+let correct = 0;
+
+let startTime = null;
+
+let timerInterval = null;
+
+let timeLeft = 0;
+
+let studentName = "";
+
+
+// =====================================================
+// فارسی کردن اعداد
+// =====================================================
+
+function fa(value){
+
+  return String(value).replace(
+    /\d/g,
+    d => "۰۱۲۳۴۵۶۷۸۹"[d]
+  );
+
+}
+
+
+// =====================================================
+// HTML امن
+// =====================================================
+
+function esc(value){
+
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    c => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    }[c])
+  );
+
+}
+
+
+// =====================================================
+// دریافت آزمون
+// =====================================================
+
+async function loadQuiz(){
+
+  try{
+
+    const response =
+      await fetch(
+        "/api/quiz",
+        {
+          cache:"no-store"
+        }
+      );
+
+
+    if(!response.ok){
+
+      throw new Error(
+        "خطا در دریافت آزمون"
+      );
+
+    }
+
+
+    quiz =
+      await response.json();
+
+
+    if(
+      !quiz ||
+      !Array.isArray(quiz.questions) ||
+      quiz.questions.length === 0
+    ){
+
+      throw new Error(
+        "آزمونی وجود ندارد."
+      );
+
+    }
+
+
+    questions =
+      quiz.questions;
+
+
+    return true;
+
+  }
+
+  catch(error){
+
+    alert(
+      error.message ||
+      "آزمون در دسترس نیست."
+    );
+
+    return false;
+
+  }
+
+}
+
+
+// =====================================================
+// شروع آزمون
+// =====================================================
+
+async function startQuiz(){
+
+  studentName =
+    document
+      .getElementById("studentName")
+      .value
+      .trim();
+
+
+  if(!studentName){
+
+    alert(
+      "لطفاً نام خود را وارد کنید."
+    );
+
+    return;
+
+  }
+
+
+  const loaded =
+    await loadQuiz();
+
+
+  if(!loaded){
+    return;
+  }
+
+
+  current = 0;
+
+  correct = 0;
+
+  answers = [];
+
+
+  // برای همه سؤال‌ها پاسخ خالی ایجاد می‌کنیم
+
+  answers =
+    questions.map(() => ({
+      answer:null
+    }));
+
+
+  document
+    .getElementById("nameScreen")
+    .classList
+    .add("hidden");
+
+
+  document
+    .getElementById("quizScreen")
+    .classList
+    .remove("hidden");
+
+
+  startTime =
+    Date.now();
+
+
+  timeLeft =
+    Number(
+      quiz.durationMinutes ||
+      quiz.duration ||
+      15
+    ) * 60;
+
+
+  startTimer();
+
+  renderQuestion();
+
+}
+
+
+// =====================================================
+// تایمر
+// =====================================================
+
+function startTimer(){
+
+  clearInterval(
+    timerInterval
+  );
+
+
+  updateTimer();
+
+
+  timerInterval =
+    setInterval(() => {
+
+      timeLeft--;
+
+      updateTimer();
+
+
+      if(timeLeft <= 0){
+
+        clearInterval(
+          timerInterval
+        );
+
+
+        finishQuiz();
+
+      }
+
+    },1000);
+
+}
+
+
+// =====================================================
+// نمایش تایمر
+// =====================================================
+
+function updateTimer(){
+
+  const minutes =
+    Math.floor(
+      Math.max(timeLeft,0) / 60
+    );
+
+
+  const seconds =
+    Math.max(timeLeft,0) % 60;
+
+
+  document
+    .getElementById("timer")
+    .textContent =
+      fa(
+        String(minutes).padStart(2,"0")
+        +
+        ":"
+        +
+        String(seconds).padStart(2,"0")
+      );
+
+}
+
+
+// =====================================================
+// نمایش سؤال
+// =====================================================
+
+function renderQuestion(){
+
+  if(current >= questions.length){
+
+    finishQuiz();
+
+    return;
+
+  }
+
+
+  const q =
+    questions[current];
+
+
+  document
+    .getElementById("questionNumber")
+    .textContent =
+      "سؤال " +
+      fa(current + 1);
+
+
+  document
+    .getElementById("questionCounter")
+    .textContent =
+      fa(current + 1)
+      +
+      " / "
+      +
+      fa(questions.length);
+
+
+  const progress =
+    Math.round(
+      (current / questions.length) *
+      100
+    );
+
+
+  document
+    .getElementById("progressBar")
+    .style
+    .width =
+      progress + "%";
+
+
+  document
+    .getElementById("progressText")
+    .textContent =
+      fa(progress) + "٪";
+
+
+  const content =
+    document.getElementById(
+      "questionContent"
+    );
+
+
+  const options =
+    document.getElementById(
+      "options"
+    );
+
+
+  options.innerHTML = "";
+
+
+  // =================================================
+  // سؤال ضرب
+  // =================================================
+
+  if(q.type === "multiplication"){
+
+    content.innerHTML = `
+
+      <div class="question-text">
+        حاصل ضرب زیر را به دست آور:
+      </div>
+
+      <div class="multiplication-box">
+
+        ${fa(q.a)}
+        ×
+        ${fa(q.b)}
+        =
+        ؟
+
+      </div>
+
+    `;
+
+
+    renderMultiplicationOptions(
+      q,
+      options
+    );
+
+  }
+
+
+  // =================================================
+  // سؤال هندسه
+  // =================================================
+
+  else if(q.type === "geometry"){
+
+    content.innerHTML = `
+
+      <div class="question-text">
+        ${esc(q.questionText)}
+      </div>
+
+    `;
+
+
+    renderGeometryOptions(
+      q,
+      options
+    );
+
+  }
+
+
+  // =================================================
+  // دکمه
+  // =================================================
+
+  const nextBtn =
+    document.getElementById(
+      "nextBtn"
+    );
+
+
+  if(current === questions.length - 1){
+
+    nextBtn.textContent =
+      "پایان آزمون";
+
+  }
+  else{
+
+    nextBtn.textContent =
+      "سؤال بعدی";
+
+  }
+
+
+  // اگر قبلاً جواب داده شده
+
+  if(
+    answers[current] &&
+    answers[current].answer !== null
+  ){
+
+    showSelectedAnswer();
+
+  }
+
+}
+
+
+// =====================================================
+// گزینه‌های ضرب
+// =====================================================
+
+function renderMultiplicationOptions(
+  q,
+  container
+){
+
+  const correctAnswer =
+    Number(q.answer);
+
+
+  const values =
+    generateMultiplicationOptions(
+      correctAnswer
+    );
+
+
+  values.forEach(
+    (value,index) => {
+
+      const div =
+        document.createElement("div");
+
+
+      div.className =
+        "option";
+
+
+      div.textContent =
+        fa(value);
+
+
+      div.onclick =
+        () => selectAnswer(
+          value,
+          div
+        );
+
+
+      container.appendChild(div);
+
+    }
+  );
+
+}
+
+
+// =====================================================
+// ساخت گزینه ضرب
+// =====================================================
+
+function generateMultiplicationOptions(
+  correctAnswer
+){
+
+  const values =
+    new Set();
+
+
+  values.add(
+    correctAnswer
+  );
+
+
+  while(values.size < 4){
+
+    const offset =
+      Math.floor(
+        Math.random() * 15
+      ) - 7;
+
+
+    const value =
+      correctAnswer + offset;
+
+
+    if(value > 0){
+
+      values.add(value);
+
+    }
+
+  }
+
+
+  return [...values]
+    .sort(
+      () =>
+        Math.random() - .5
+    );
+
+}
+
+
+// =====================================================
+// گزینه‌های هندسه
+// =====================================================
+
+function renderGeometryOptions(
+  q,
+  container
+){
+
+  const options =
+    Array.isArray(q.options)
+      ? q.options
+      : [];
+
+
+  options.forEach(
+    (text,index) => {
+
+      const div =
+        document.createElement("div");
+
+
+      div.className =
+        "option";
+
+
+      div.textContent =
+        fa(text);
+
+
+      div.onclick =
+        () => selectAnswer(
+          index,
+          div
+        );
+
+
+      container.appendChild(div);
+
+    }
+  );
+
+}
+
+
+// =====================================================
+// انتخاب جواب
+// =====================================================
+
+function selectAnswer(
+  answer,
+  element
+){
+
+  if(
+    answers[current] &&
+    answers[current].locked
+  ){
+
+    return;
+
+  }
+
+
+  answers[current] = {
+
+    answer,
+
+    locked:true
+
+  };
+
+
+  const q =
+    questions[current];
+
+
+  let isCorrect =
+    false;
+
+
+  // ضرب
+
+  if(q.type === "multiplication"){
+
+    isCorrect =
+      Number(answer) ===
+      Number(q.answer);
+
+  }
+
+
+  // هندسه
+
+  else if(q.type === "geometry"){
+
+    isCorrect =
+      Number(answer) ===
+      Number(q.answerIndex);
+
+  }
+
+
+  if(isCorrect){
+
+    correct++;
+
+    element.classList.add(
+      "correct"
+    );
+
+  }
+  else{
+
+    element.classList.add(
+      "wrong"
+    );
+
+  }
+
+
+  document
+    .getElementById("correctCount")
+    .textContent =
+      fa(correct);
+
+
+  showCorrectAnswer();
+
+}
+
+
+// =====================================================
+// نمایش جواب درست
+// =====================================================
+
+function showCorrectAnswer(){
+
+  const q =
+    questions[current];
+
+
+  const elements =
+    document.querySelectorAll(
+      ".option"
+    );
+
+
+  elements.forEach(
+    (element,index) => {
+
+      let correctIndex =
+        -1;
+
+
+      // هندسه
+
+      if(q.type === "geometry"){
+
+        correctIndex =
+          Number(
+            q.answerIndex
+          );
+
+      }
+
+
+      // ضرب
+
+      else{
+
+        const displayed =
+          Number(
+            element.textContent
+              .replace(/[۰-۹]/g,d =>
+                "۰۱۲۳۴۵۶۷۸۹"
+                  .indexOf(d)
+              )
+          );
+
+
+        if(
+          displayed ===
+          Number(q.answer)
+        ){
+
+          correctIndex =
+            index;
+
+        }
+
+      }
+
+
+      if(index === correctIndex){
+
+        element.classList.add(
+          "correct"
+        );
+
+      }
+
+    }
+  );
+
+}
+
+
+// =====================================================
+// نمایش جواب انتخاب‌شده قبلی
+// =====================================================
+
+function showSelectedAnswer(){
+
+  const q =
+    questions[current];
+
+
+  const saved =
+    answers[current];
+
+
+  const elements =
+    document.querySelectorAll(
+      ".option"
+    );
+
+
+  elements.forEach(
+    (element,index) => {
+
+      if(q.type === "geometry"){
+
+        if(
+          index ===
+          Number(saved.answer)
+        ){
+
+          element.classList.add(
+            "selected"
+          );
+
+        }
+
+      }
+
+      else{
+
+        const displayed =
+          Number(
+            element.textContent
+              .replace(/[۰-۹]/g,d =>
+                "۰۱۲۳۴۵۶۷۸۹"
+                  .indexOf(d)
+              )
+          );
+
+
+        if(
+          displayed ===
+          Number(saved.answer)
+        ){
+
+          element.classList.add(
+            "selected"
+          );
+
+        }
+
+      }
+
+    }
+  );
+
+}
+
+
+// =====================================================
+// سؤال بعدی
+// =====================================================
+
+function nextQuestion(){
+
+  if(
+    !answers[current] ||
+    answers[current].answer === null ||
+    answers[current].answer === undefined
+  ){
+
+    alert(
+      "لطفاً یکی از گزینه‌ها را انتخاب کن."
+    );
+
+    return;
+
+  }
+
+
+  current++;
+
+
+  if(
+    current >= questions.length
+  ){
+
+    finishQuiz();
+
+    return;
+
+  }
+
+
+  renderQuestion();
+
+}
+
+
+// =====================================================
+// پایان آزمون
+// =====================================================
+
+async function finishQuiz(){
+
+  clearInterval(
+    timerInterval
+  );
+
+
+  document
+    .getElementById("quizScreen")
+    .classList
+    .add("hidden");
+
+
+  document
+    .getElementById("resultScreen")
+    .classList
+    .remove("hidden");
+
+
+  const total =
+    questions.length;
+
+
+  const wrong =
+    total - correct;
+
+
+  const percentage =
+    total > 0
+      ? Math.round(
+          (correct / total) * 100
+        )
+      : 0;
+
+
+  document
+    .getElementById("score")
+    .textContent =
+      fa(correct)
+      +
+      " / "
+      +
+      fa(total);
+
+
+  document
+    .getElementById("resultInfo")
+    .innerHTML = `
+
+      پاسخ‌های صحیح:
+      <b>
+        ${fa(correct)}
+      </b>
+
+      <br>
+
+      پاسخ‌های نادرست یا بدون پاسخ:
+      <b>
+        ${fa(wrong)}
+      </b>
+
+      <br>
+
+      درصد:
+      <b>
+        ${fa(percentage)}٪
+      </b>
+
+    `;
+
+
+  renderWrongQuestions();
+
+
+  // =================================================
+  // ارسال به سرور
+  // =================================================
+
+  try{
+
+    const response =
+      await fetch(
+        "/api/answers",
+        {
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+
+              name:
+                studentName,
+
+              quizTitle:
+                quiz.title,
+
+              answers,
+
+              score:correct,
+
+              correct,
+
+              wrong,
+
+              blank:
+                answers.filter(
+                  a =>
+                    !a ||
+                    a.answer === null ||
+                    a.answer === undefined
+                ).length,
+
+              total,
+
+              percentage,
+
+              time:
+                Math.round(
+                  (Date.now() -
+                    startTime) / 1000
+                )
+
+            })
+        }
+      );
+
+
+    if(!response.ok){
+
+      console.error(
+        await response.text()
+      );
+
+    }
+
+  }
+
+  catch(error){
+
+    console.error(error);
+
+  }
+
+}
+
+
+// =====================================================
+// نمایش سؤال‌های اشتباه
+// =====================================================
+
+function renderWrongQuestions(){
+
+  const box =
+    document.getElementById(
+      "wrongList"
+    );
+
+
+  const wrongQuestions = [];
+
+
+  questions.forEach(
+    (q,index) => {
+
+      const saved =
+        answers[index];
+
+
+      let answeredCorrectly =
+        false;
+
+
+      if(saved){
+
+        if(q.type === "geometry"){
+
+          answeredCorrectly =
+            Number(saved.answer) ===
+            Number(q.answerIndex);
+
+        }
+        else{
+
+          answeredCorrectly =
+            Number(saved.answer) ===
+            Number(q.answer);
+
+        }
+
+      }
+
+
+      if(!answeredCorrectly){
+
+        wrongQuestions.push({
+          q,
+          index,
+          saved
+        });
+
+      }
+
+    }
+  );
+
+
+  if(!wrongQuestions.length){
+
+    box.innerHTML = `
+
+      <div
+        style="
+          background:#e5f8ee;
+          color:#087443;
+          padding:15px;
+          border-radius:12px;
+        "
+      >
+        همه پاسخ‌ها درست بودند.
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  box.innerHTML = `
+
+    <h3>
+      سؤال‌هایی که نیاز به مرور دارند:
+    </h3>
+
+    ${
+      wrongQuestions.map(
+        item => {
+
+          const q =
+            item.q;
+
+
+          if(q.type === "geometry"){
+
+            const correctOption =
+              Array.isArray(q.options)
+                ? q.options[
+                    Number(q.answerIndex)
+                  ]
+                : "";
+
+
+            return `
+
+              <div class="wrong-item">
+
+                <b>
+                  سؤال ${fa(item.index + 1)}
+                </b>
+
+                <br>
+
+                ${esc(q.questionText)}
+
+                <br>
+
+                پاسخ صحیح:
+                <b>
+                  ${esc(correctOption)}
+                </b>
+
+              </div>
+
+            `;
+
+          }
+
+
+          return `
+
+            <div class="wrong-item">
+
+              <b>
+                سؤال ${fa(item.index + 1)}
+              </b>
+
+              <br>
+
+              ${fa(q.a)}
+              ×
+              ${fa(q.b)}
+              =
+              <b>
+                ${fa(q.answer)}
+              </b>
+
+            </div>
+
+          `;
+
+        }
+      ).join("")
+    }
+
+  `;
+
+}
+
+
+// =====================================================
+// شروع اولیه
+// =====================================================
+
+document
+  .getElementById("studentName")
+  .addEventListener(
+    "keydown",
+    event => {
+
+      if(event.key === "Enter"){
+
+        startQuiz();
+
+      }
+
+    }
+  );
+
+</script>
+
+</body>
+
+</html>
