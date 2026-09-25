@@ -1,17 +1,34 @@
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
+    try {
+      const result = await env.DB
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all();
 
-    if (url.pathname === "/") {
-      return new Response("Math Class Worker is working!", {
-        headers: {
-          "content-type": "text/plain; charset=UTF-8"
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tables: result.results
+        }, null, 2),
+        {
+          headers: {
+            "content-type": "application/json; charset=UTF-8"
+          }
         }
-      });
+      );
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error.message
+        }, null, 2),
+        {
+          status: 500,
+          headers: {
+            "content-type": "application/json; charset=UTF-8"
+          }
+        }
+      );
     }
-
-    return new Response("Not Found", {
-      status: 404
-    });
   }
 };
