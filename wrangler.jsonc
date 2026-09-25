@@ -5,5 +5,12 @@
   "compatibility_date": "2026-09-25",
   "observability": {
     "enabled": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "math-class-db",
+      "database_id": "2d24b3a1-24f3-41eb-9005-63fe9bca04d1"
+    }
+  ]
 }
